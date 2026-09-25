@@ -7,16 +7,16 @@ then figure out why it broke.
 
 The first simulation is Conway's Game of Life, with a Pygame window, a simple
 control panel, randomization, and a handful of classic `.cells` patterns. It is
-also the only one... for now. :) 
+also the only one... for now. :)
 
 ## Getting started
 
 ### 1. Clone the project
 
-Replace the placeholder URL with the repository URL:
+Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Raisin69666/Pymulations
 cd Pymulations
 ```
 
@@ -84,8 +84,8 @@ easy to follow while learning.
 
 Some possible directions for future experiments:
 
-- Add more simulations, such as Langton's Ant, falling sand, or reaction-
-	diffusion patterns.
+- Add more simulations, such as Langton's Ant, forest fires, falling sand, or reaction-diffusion patterns.
+- Add click and drag capabilities to the UI/mouse.
 - Make the grid resizable instead of using a fixed window size.
 - Add step-forward and step-back controls.
 - Save and load custom patterns.
@@ -93,6 +93,3 @@ Some possible directions for future experiments:
 - Improve the pattern editor and add pattern previews.
 - Add tests for simulation rules and pattern parsing.
 - Turn the simulation picker into a real framework for swapping simulations.
-
-There is no need to implement all of these. Pick the idea that seems fun and
-useful, then learn what the code needs along the way.
