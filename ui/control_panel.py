@@ -1,15 +1,19 @@
 """
-Control panel containing all the options for the simulation, including buttons
-and sliders (play/pause, random, clear, ...).
+Control panel: the simulation selector at the top, followed by
+controls specific to Game of Life (speed, play/pause, randomize,
+clear, patterns).
 
-Key principle: this class knows NOTHING about the simulation. It
-simply draws widgets and, when passed an event via `handle_event()`, returns
-a simple action name (a string) if a button was clicked—or `None` otherwise.
-It is `main.py` that decides how to handle that action
-(calling `simulation.clear()`, etc.).
+Key principle: this class knows NOTHING about the simulations
+themselves. It merely draws widgets and, when passed an
+event via `handle_event()`, responds with a simple action name
+(a string, or a tuple (action, value))—or `None` otherwise. It is
+`main.py` that decides what to do with this action (instantiate a
+simulation class, call `simulation.clear()`, etc.).
 
-This keeps the class 100% reusable: it would work the same way regardless of the
-simulation connected to it.
+As long as no simulation is loaded, the controls that depend on one
+(speed, play/pause, randomize, clear, patterns) remain disabled
+—see set_simulation_controls_enabled(). The simulation selector,
+however, is always active: it is the only way to start something.
 """
 
 import pygame
@@ -27,7 +31,7 @@ class ControlPanel:
             manager,
             rect,
             pattern_names,
-            simulation_name="Simulation",
+            simulation_names,
             initial_speed=5.0
         ):
 
@@ -42,26 +46,47 @@ class ControlPanel:
         self.title_label = self._add_widget(
             pygame_gui.elements.UILabel,
             height=32,
-            text=simulation_name,
-            object_id="#simulation_title",
+            text="None selected",
+            object_id="#simulation_title"
         )
 
         # Simulation title text effect
         self.title_label.set_active_effect(
             pygame_gui.TEXT_EFFECT_TYPING_APPEAR,
-            params={"time_per_letter": 0.04},
+            params={"time_per_letter": 0.04}
         )
 
         # Spacer between title and widgets
-        self._add_spacer(20)
+        self._add_spacer(32)
 
+
+        # --- Simulation selector (always active) ---
+        simulation_names = simulation_names or ["(None)"]
+
+        # Dropdown simulation selection
+        self.simulation_dropdown = self._add_widget(
+            pygame_gui.elements.UIDropDownMenu,
+            height=self.ROW_HEIGHT,
+            options_list=simulation_names,
+            starting_option=simulation_names[0]
+        )
+
+        # Load selected simulation
+        self.load_simulation_button = self._add_widget(
+            pygame_gui.elements.UIButton,
+            height=self.ROW_HEIGHT,
+            text="Lauch"
+        )
+
+
+        # --- Game of Life specific controls ---
         self.update_freq = initial_speed
 
         # Simulation speed text
         self.speed_label = self._add_widget(
             pygame_gui.elements.UILabel,
             height=20,
-            text=self._speed_text(),
+            text=self._speed_text()
         )
 
         # Simulation speed slider
@@ -69,8 +94,8 @@ class ControlPanel:
             pygame_gui.elements.UIHorizontalSlider,
             height=20,
             start_value=self.update_freq,
-            value_range=(0.0, 10.0),        # Need to be floats,
-            click_increment=0.1,            # else, Python defaults to int
+            value_range=(0.0, 10.0),        # Needs to be floats,
+            click_increment=0.1             # else, Python defaults to int
         )
 
         # Play/Pause button
@@ -89,7 +114,7 @@ class ControlPanel:
         )
 
         # Spacer between simulation options and pattern selection options
-        self._add_spacer(12)
+        self._add_spacer(20)
 
         # Selected pattern text
         self.pattern_label = self._add_widget(
@@ -101,7 +126,7 @@ class ControlPanel:
             pygame_gui.elements.UIDropDownMenu,
             height=self.ROW_HEIGHT,
             options_list=pattern_names or ["(none found)"],
-            starting_option=(pattern_names or ["(none found)"])[0],
+            starting_option=(pattern_names or ["(none found)"])[0]
         )
 
         # Load pattern button
@@ -109,6 +134,20 @@ class ControlPanel:
             pygame_gui.elements.UIButton, height=self.ROW_HEIGHT, text="Load"
         )
 
+        # Controls are non responsive as long as
+        # the simulation has not been loaded
+        self._simulation_controls = [
+            self.speed_label,
+            self.speed_slider,
+            self.play_button,
+            self.randomize_button,
+            self.clear_button,
+            self.pattern_label,
+            self.pattern_dropdown,
+            self.load_pattern_button
+        ]
+
+        self.set_simulation_controls_enabled(False)
 
     def _add_widget(self, widget_class, height, **kwargs):
         """
@@ -143,6 +182,24 @@ class ControlPanel:
         self.play_button.set_text("Pause" if playing else "Playing")
 
 
+    def set_simulation_title(self, name):
+        """Change simulation title and replay text effect."""
+        self.title_label.set_text(name)
+        self.title_label.set_active_effect(
+            pygame_gui.TEXT_EFFECT_TYPING_APPEAR,
+            params={"time_per_letter": 0.04}
+        )
+
+
+    def set_simulation_controls_enabled(self, enabled):
+        """
+        Enables or disables all controls specific a simulation
+        (grayed out until a simulation has been started). The simulation
+        selector itself is never disabled.
+        """
+        for widget in self._simulation_controls:
+            widget.enable() if enabled else widget.disable()
+
     def handle_event(self, event):
         """
         Processes a pygame_gui event intended for this panel. Returns
@@ -164,6 +221,8 @@ class ControlPanel:
             return None
 
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.load_simulation_button:
+                return ("load_simulation", self.simulation_dropdown.selected_option[0])
             if event.ui_element == self.play_button:
                 return "toggle_play"
             if event.ui_element == self.randomize_button:

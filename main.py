@@ -1,9 +1,11 @@
 """
-Main entry point for the simulation. Initializes the simulation, control panel,
-and handles the main loop for user input and rendering. Simulation logic is
-encapsulated in their respective classes (e.g., GameOfLife) which handle the rules
-and state of the simulation. The main loop manages user interactions,
-updates the simulation state, and renders the grid and UI elements on the screen.
+Main entry point for the simulation.
+
+Initializes the simulation, control panel, and handles the main loop for
+user input and rendering. Simulation logic is encapsulated in their
+respective classes (e.g., GameOfLife) which handle the rules and state
+of the simulation. The main loop manages user interactions, updates the
+simulation state, and renders the grid and UI elements on the screen.
 """
 
 import pygame
@@ -17,13 +19,19 @@ from simulations import (
 )
 from ui import ControlPanel
 
+# Simulation registry : displayed name --> class.
+# To add a simulation, add it to the list
+SIMULATIONS = {
+    "Game of Life": GameOfLife,
+}
+
 # Colors - "Nord" themed
 BACKGROUND = (46, 52, 64)  # 2E3440
 GRID_LINE = (59, 66, 82)  # 3B4252
 
 # Simulation dimension settings
 TILE_SIZE = 10
-SIM_WIDTH, SIM_HEIGHT = 1600, 900  # (1600 - 220) x 900
+SIM_WIDTH, SIM_HEIGHT = 800, 600
 ROWS, COLS = SIM_HEIGHT // TILE_SIZE, SIM_WIDTH // TILE_SIZE
 
 # Panel dimension setting
@@ -73,22 +81,22 @@ def main():
     control_panel = ControlPanel(
         manager=ui_manager,
         rect=pygame.Rect(0, 0, PANEL_WIDTH, WINDOW_HEIGHT),
-        simulation_name="Game of Life",
+        simulation_names=list(SIMULATIONS.keys()),
         pattern_names=list_available_patterns(),
         initial_speed=5.0,
     )
 
-    control_panel.set_playing_label(playing)
+    # control_panel.set_playing_label(playing)
 
     while running:
         time_delta = clock.tick(FPS) / 1000.0
 
-        if playing:
-            count += 0.1
-
-        if count >= control_panel.update_freq:
-            count = 0
-            simulation.step()
+        if simulation is not None:
+            if playing:
+                count += 0.1
+            if count >= control_panel.update_freq:
+                count = 0
+                simulation.step()
 
         pygame.display.set_caption(
             f"Raisin's PyGame of Life - {'Playing' if playing else 'Paused'}"
@@ -105,11 +113,15 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
 
-                # "mouse_x >= PANEL_WIDTH" exclude ALL panel, not only the widgets
-                if not ui_manager.get_hovering_any_element() and mouse_x >= PANEL_WIDTH:
+                if (
+                    simulation is not None
+                    and not ui_manager.get_hovering_any_element()
+                    and mouse_x >= PANEL_WIDTH
+                ):
                     col = (mouse_x - PANEL_WIDTH) // TILE_SIZE
                     row = mouse_y // TILE_SIZE
                     simulation.toggle_cell(col, row)
+
 
             # Keyboard events
             if event.type == pygame.KEYDOWN:
@@ -130,27 +142,41 @@ def main():
 
         # Defining actions
         if action == "toggle_play":  # Play/Pause action
-            playing = not playing
-            control_panel.set_playing_label(playing)
+            if simulation is not None:
+                playing = not playing
+                control_panel.set_playing_label(playing)
         elif action == "clear":  # Clear action
-            simulation.clear()
-            playing = False
-            count = 0
-            control_panel.set_playing_label(playing)
+            if simulation is not None:
+                simulation.clear()
+                playing = False
+                count = 0
+                control_panel.set_playing_label(playing)
         elif action == "randomize":  # Randomize action
-            simulation.randomize()
+            if simulation is not None:
+                simulation.randomize()
         elif isinstance(action, tuple) and action[0] == "load_pattern":
-            pattern_name = action[1]
-            cells = load_cells_file(get_pattern_path(pattern_name))
-            simulation.load_patterns(cells)
+            if simulation is not None:
+                pattern_name = action[1]
+                cells = load_cells_file(get_pattern_path(pattern_name))
+                simulation.load_patterns(cells)
+                playing = False
+                count = 0
+                control_panel.set_playing_label(playing)
+
+        elif isinstance(action, tuple) and action[0] == "load_simulation":
+            simulation_class = SIMULATIONS[action[1]]
+            simulation = simulation_class(rows=ROWS, cols=COLS)
             playing = False
             count = 0
             control_panel.set_playing_label(playing)
+            control_panel.set_simulation_title(action[1])
+            control_panel.set_simulation_controls_enabled(True)
 
         ui_manager.update(time_delta)
 
         screen.fill(BACKGROUND)
-        draw_grid(simulation.get_cells_to_draw())
+        cells_to_draw = simulation.get_cells_to_draw() if simulation is not None else ()
+        draw_grid(cells_to_draw)
         ui_manager.draw_ui(screen)
 
         pygame.display.update()

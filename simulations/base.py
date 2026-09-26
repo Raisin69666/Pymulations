@@ -3,7 +3,7 @@ A common interface that every simulation must adhere to.
 
 `main.py` never needs to know the internal rules of a specific simulation
 (Game of Life, forest fire, etc.)—it communicates solely through these methods.
-This makes it possible to add new simulations without ever modifying the main engine.
+This makes it possible to add new simulations without modifying the main engine.
 """
 
 from abc import ABC, abstractmethod
